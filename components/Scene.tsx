@@ -20,6 +20,8 @@ interface Props {
 
 const Scene: React.FC<Props> = ({ mode, featureShape, handStateRef, photos, focusId, params }) => {
   const groupRef = useRef<THREE.Group>(null);
+  const cursorRef = useRef<THREE.Mesh>(null);
+  const cursorLightRef = useRef<THREE.PointLight>(null);
   
   // Calculate photo slots for the current shape
   const photoSlots = useMemo(() => {
@@ -48,14 +50,56 @@ const Scene: React.FC<Props> = ({ mode, featureShape, handStateRef, photos, focu
        const photoIndex = photos.findIndex(p => p.id === focusId);
        if (photoIndex !== -1) {
          // Zoom in closer for the smaller polaroid size
-         // Polaroid is at z=6 (locally), camera at z=8.5 gives 2.5 distance 
-         // which is good for object height ~1.2
          targetPos.set(0, 0, 8.5); 
        }
     }
 
     state.camera.position.lerp(targetPos, delta * 1.5);
     state.camera.lookAt(targetLookAt);
+
+    // Update Cursor (Pinch Feedback)
+    if (cursorRef.current && cursorLightRef.current) {
+        if (hand.active) {
+            // Map -1..1 to frustum visible range (roughly -8..8 for Z=18 distance roughly)
+            // But since cursor is part of camera view essentially, let's put it at fixed Z relative to camera or inside world
+            // Since camera moves, easier to put cursor in world space but following "screen" coordinates
+            // Simple approach: Map hand x/y to X/Y at Z=10
+            
+            const visibleWidth = 12;
+            const visibleHeight = 8;
+            
+            const targetX = hand.pinchX * visibleWidth;
+            const targetY = hand.pinchY * visibleHeight;
+            const targetZ = 12; // In front of everything
+
+            // Lerp cursor for smoothness
+            cursorRef.current.position.x = THREE.MathUtils.lerp(cursorRef.current.position.x, targetX, delta * 15);
+            cursorRef.current.position.y = THREE.MathUtils.lerp(cursorRef.current.position.y, targetY, delta * 15);
+            cursorRef.current.position.z = targetZ;
+
+            // Visual State
+            const targetScale = hand.isPinching ? 1.5 : 0.5;
+            cursorRef.current.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), delta * 10);
+            
+            // Intensity
+            const targetIntensity = hand.isPinching ? 2.0 : 0.5;
+            (cursorRef.current.material as THREE.MeshBasicMaterial).opacity = THREE.MathUtils.lerp(
+                (cursorRef.current.material as THREE.MeshBasicMaterial).opacity, 
+                0.8, 
+                delta * 5
+            );
+            cursorLightRef.current.intensity = targetIntensity;
+            
+            // Color shift on pinch
+            const mat = cursorRef.current.material as THREE.MeshBasicMaterial;
+            if (hand.isPinching) mat.color.setHex(0xFFFFFF); // White hot
+            else mat.color.setHex(0xD4AF37); // Gold idle
+
+        } else {
+            // Hide if inactive
+            cursorRef.current.scale.setScalar(0);
+        }
+    }
   });
 
   return (
@@ -74,6 +118,13 @@ const Scene: React.FC<Props> = ({ mode, featureShape, handStateRef, photos, focu
 
       {/* Dramatic Room Environment for Reflections */}
       <Environment preset="city" background={false} />
+
+      {/* Hand Feedback Cursor */}
+      <mesh ref={cursorRef} position={[0,0,10]}>
+         <sphereGeometry args={[0.15, 16, 16]} />
+         <meshBasicMaterial color="#D4AF37" transparent opacity={0} depthTest={false} />
+         <pointLight ref={cursorLightRef} distance={5} decay={2} color="#D4AF37" />
+      </mesh>
 
       <group ref={groupRef}>
         {/* The fine "gold dust" structure - Optimized count */}

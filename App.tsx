@@ -10,11 +10,19 @@ import HandController from './components/HandController';
 import { AppMode, FeatureShape, HandState, PhotoData, MAX_PHOTOS } from './types';
 import { getRandomPosition } from './utils/geometry';
 
+// Default Luxury Christmas Images for immediate demo
+const DEFAULT_PHOTOS: PhotoData[] = [
+    { id: '1', url: 'https://images.unsplash.com/photo-1543258103-a62bdc069871?auto=format&fit=crop&w=400&q=80', position: getRandomPosition(15), rotation: new THREE.Vector3() },
+    { id: '2', url: 'https://images.unsplash.com/photo-1512474932049-78ac69ede12c?auto=format&fit=crop&w=400&q=80', position: getRandomPosition(15), rotation: new THREE.Vector3() },
+    { id: '3', url: 'https://images.unsplash.com/photo-1576919228236-a097c32a5cd4?auto=format&fit=crop&w=400&q=80', position: getRandomPosition(15), rotation: new THREE.Vector3() },
+    { id: '4', url: 'https://images.unsplash.com/photo-1482517967863-00e15c9b44be?auto=format&fit=crop&w=400&q=80', position: getRandomPosition(15), rotation: new THREE.Vector3() },
+];
+
 const App: React.FC = () => {
   // State
   const [mode, setMode] = useState<AppMode>(AppMode.FEATURE);
   const [featureShape, setFeatureShape] = useState<FeatureShape>(FeatureShape.TREE);
-  const [photos, setPhotos] = useState<PhotoData[]>([]);
+  const [photos, setPhotos] = useState<PhotoData[]>(DEFAULT_PHOTOS); // Init with defaults
   const [focusId, setFocusId] = useState<string | null>(null);
   const [handControlEnabled, setHandControlEnabled] = useState(true);
   const [gestureDisplay, setGestureDisplay] = useState('None');
@@ -23,6 +31,8 @@ const App: React.FC = () => {
   const handStateRef = useRef<HandState>({
     x: 0,
     y: 0,
+    pinchX: 0,
+    pinchY: 0,
     isPinching: false,
     gesture: 'None',
     active: false
@@ -76,17 +86,20 @@ const App: React.FC = () => {
     if (!handControlEnabled) return;
 
     // State Logic based on Gestures
+    
     if (state.gesture === 'Closed_Fist') {
-      setMode(AppMode.FEATURE);
+      setMode(prev => prev !== AppMode.FEATURE ? AppMode.FEATURE : prev);
       setFocusId(null);
     } else if (state.gesture === 'Open_Palm') {
-      setMode(AppMode.SCATTER);
+      setMode(prev => prev !== AppMode.SCATTER ? AppMode.SCATTER : prev);
       setFocusId(null);
     }
 
     // Pinch Logic for Focus
     if (state.isPinching) {
+       // Only trigger focus if we have photos and aren't already focused
        if (mode !== AppMode.FOCUS && photos.length > 0) {
+         // Pick a random photo to focus on
          const randomId = photos[Math.floor(Math.random() * photos.length)].id;
          setMode(AppMode.FOCUS);
          setFocusId(randomId);
@@ -154,7 +167,7 @@ const App: React.FC = () => {
       {/* Hidden Logic */}
       <HandController 
         onHandUpdate={handleHandUpdate} 
-        enabled={true}
+        enabled={handControlEnabled}
       />
     </div>
   );

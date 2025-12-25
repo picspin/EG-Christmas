@@ -21,8 +21,10 @@ export interface PhotoData {
 }
 
 export interface HandState {
-  x: number; // Normalized -1 to 1
+  x: number; // Normalized -1 to 1 (Scene rotation control)
   y: number; // Normalized -1 to 1
+  pinchX: number; // Normalized -1 to 1 (Screen position for cursor)
+  pinchY: number; // Normalized -1 to 1
   isPinching: boolean;
   gesture: string;
   active: boolean;
