@@ -1,0 +1,7 @@
+{
+  "name": "Emerald & Gold Christmas",
+  "description": "A luxury interactive 3D Christmas experience with hand tracking and photo memories.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
